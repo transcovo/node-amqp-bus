@@ -28,7 +28,8 @@
   },
   "dependencies": {
     "amqplib": "^0.4.0",
-    "bluebird": "^3.2.1"
+    "bluebird": "^3.2.1",
+    "co": "^4.6.0"
   },
   "engines": {
     "node": "^4.2.6"
