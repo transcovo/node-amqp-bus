@@ -50,7 +50,7 @@ describe('Node AMQP Bus', function testBus() {
     let resolve2;
     const p2 = new Promise(_resolve => resolve2 = _resolve);
 
-    yield client.listen('queue', 'key', (message, callback) => {
+    yield client.listen('testQueueBehavior', 'key', (message, callback) => {
       resolve2(message);
       callback();
     });
