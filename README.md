@@ -1,7 +1,7 @@
 node-amqb-bus
 =====
 
-[![Circle CI](https://circleci.com/gh/transcovo/node-amqp-bus.svg?style=svg)](https://circleci.com/gh/transcovo/node-amqp-bus)
+[![Circle CI](https://circleci.com/gh/transcovo/node-amqp-bus.svg?style=shield)](https://circleci.com/gh/transcovo/node-amqp-bus)
 
 Implements a simple bus client to exchange JSON message on queues using AMQP server.
 
