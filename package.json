@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "Implement a Bus using AMQP in nodejs",
   "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/transcovo/node-amqp-bus.git"
+  },
   "directories": {
     "test": "test"
   },
