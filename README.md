@@ -5,12 +5,15 @@ node-amqb-bus
 
 Implements a simple bus client to exchange JSON message on queues using AMQP server.
 
-## System dependencies
+## Install
 
-To run the tests, you need a local RabbitMQ. The simplest way to do this with the 
-exact versions used in production is to use the Dockerfile available here: https://github.com/transcovo/environments-tech/tree/master/docker
+    npm install nade-amqp-bus --save
 
-## Example
+## Use
+
+    const bus = require('nade-amqp-bus');
+
+## Examples
 
 Create a client:
 
@@ -46,4 +49,9 @@ If you want to message to be reinjected in the queue because you failed:
 
       callback(new Error('Epic fail'));
     });
+
+## Developement system dependencies
+
+To run the tests, you need a local RabbitMQ. The simplest way to do this with the 
+exact versions used in production is to use the Dockerfile available here: https://github.com/transcovo/environments-tech/tree/master/docker
 
