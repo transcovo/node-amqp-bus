@@ -7,11 +7,11 @@ Implements a simple bus client to exchange JSON message on queues using AMQP ser
 
 ## Install
 
-    npm install nade-amqp-bus --save
+    npm install node-amqp-bus --save
 
 ## Use
 
-    const bus = require('nade-amqp-bus');
+    const bus = require('node-amqp-bus');
 
 ## Examples
 
