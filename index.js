@@ -7,11 +7,8 @@ const EXCHANGE = 'bus';
 const EXCHANGE_TYPE = 'topic';
 
 module.exports.createBusClient = co.wrap(function* createBusClient(url) {
-  const channel = yield amqplib
-    .connect(url)
-    .then((connection) => {
-      return connection.createChannel();
-    });
+  const connection = yield amqplib.connect(url);
+  const channel = yield connection.createChannel();
 
   return {
     listen: (queue, routingKey, options, listener) => co(function* listen() {
