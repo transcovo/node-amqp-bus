@@ -27,7 +27,7 @@ describe('Node AMQP Bus', function testBus() {
       callback();
     });
 
-    yield client.publish('key', { test: 'message' });
+    client.publish('key', { test: 'message' });
 
     const message1 = yield p1;
     message1.should.eql({ test: 'message' });
@@ -55,7 +55,7 @@ describe('Node AMQP Bus', function testBus() {
       callback();
     });
 
-    yield client.publish('key', { test: 'message' });
+    client.publish('key', { test: 'message' });
 
     yield Promise.race([p1, p2]);
 
@@ -77,7 +77,7 @@ describe('Node AMQP Bus', function testBus() {
       callback();
     });
 
-    yield client.publish('key', { test: 'message' });
+    client.publish('key', { test: 'message' });
 
     yield p2;
 
