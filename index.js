@@ -25,6 +25,6 @@ module.exports.createBusClient = co.wrap(function* createBusClient(url) {
         });
       });
     }),
-    publish: (routingKey, message) => channel.publish(EXCHANGE, routingKey, new Buffer(JSON.stringify(message)))
+    publish: (routingKey, message, options) => channel.publish(EXCHANGE, routingKey, new Buffer(JSON.stringify(message)), options)
   };
 });
