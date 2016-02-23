@@ -18,6 +18,10 @@ Implements a simple bus client to exchange JSON message on queues using AMQP ser
 Create a client:
 
     const client = yield bus.createBusClient(URL);
+    
+Close client
+
+    client.close(); // return a promise
 
 Publish an event to the bus:
 
@@ -49,6 +53,11 @@ If you want to message to be reinjected in the queue because you failed:
 
       callback(new Error('Epic fail'));
     });
+    
+You can directly access to the raw connection and channel objects:
+
+    client.connection
+    client.channel
 
 ## Developement system dependencies
 
