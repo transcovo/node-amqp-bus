@@ -11,6 +11,8 @@ module.exports.createBusClient = co.wrap(function* createBusClient(url) {
   const channel = yield connection.createChannel();
 
   return {
+    connection,
+    channel,
     listen: (queue, routingKey, options, listener) => co(function* listen() {
       if (!listener) {
         listener = options;
@@ -25,6 +27,13 @@ module.exports.createBusClient = co.wrap(function* createBusClient(url) {
         });
       });
     }),
-    publish: (routingKey, message, options) => channel.publish(EXCHANGE, routingKey, new Buffer(JSON.stringify(message)), options)
+    publish: (routingKey, message, options) => channel.publish(EXCHANGE, routingKey, new Buffer(JSON.stringify(message)), options),
+    close: () => co(function* close() {
+      try {
+        yield channel.close();
+      } finally {
+        yield connection.close();
+      }
+    })
   };
 });

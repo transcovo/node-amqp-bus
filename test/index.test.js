@@ -34,6 +34,8 @@ describe('Node AMQP Bus', function testBus() {
 
     const message2 = yield p2;
     message2.should.eql({ test: 'message' });
+
+    yield client.close();
   });
 
   it('Should pass a message only once on a give queue', function* testQueueBehavior() {
@@ -82,5 +84,7 @@ describe('Node AMQP Bus', function testBus() {
     yield p2;
 
     p2.isResolved().should.be.true();
+
+    yield client.close();
   });
 });
