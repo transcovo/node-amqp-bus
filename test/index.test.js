@@ -62,6 +62,10 @@ describe('Node AMQP Bus', function testBus() {
     yield Promise.race([p1, p2]);
 
     (p1.isResolved() && !p2.isResolved() || !p1.isResolved() && p2.isResolved()).should.be.true();
+
+    yield client.channel.purgeQueue('testQueueBehavior');
+
+    yield client.close();
   });
 
   it('Should pass a message to another queue if a given queue fails', function* testFallbackOtherQueue() {
