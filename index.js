@@ -19,6 +19,7 @@ function* createBusClient(url, options) {
   options.heartbeat = options.heartbeat || DEFAULT_HEARTBEAT;
   const connection = yield amqplib.connect(url, options);
   const channel = yield connection.createChannel();
+
   const busClient = {
     channel,
     connection,
@@ -113,4 +114,4 @@ function* createBusClient(url, options) {
   }
 }
 
-module.exports = { createBusClient };
+module.exports = { createBusClient: co.wrap(createBusClient) };
