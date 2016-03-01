@@ -1,6 +1,6 @@
 {
   "name": "node-amqp-bus",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Implement a Bus using AMQP in nodejs",
   "main": "index.js",
   "repository": {
