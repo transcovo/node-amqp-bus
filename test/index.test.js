@@ -2,93 +2,200 @@
 
 require('co-mocha')(require('mocha'));
 require('should');
+const amqplib = require('amqplib');
 
-const Promise = require('bluebird');
 const bus = require('../index');
 const URL = 'amqp://guest:guest@localhost:5672';
+const sinon = require('sinon');
+
+/**
+ * Wait for the queue to meet the condition; useful for waiting for messages to arrive, for example.
+ *
+ * @param {String} queue : the queue name
+ * @param {Function} condition : condition handler
+ * @credit https://github.com/squaremo/amqp.node/blob/master/test/channel_api.js
+ * @returns {Promise} when condition match
+ * @private
+ */
+function* waitForQueue(queue, condition) {
+  const connection = yield amqplib.connect(URL);
+  const channel = yield connection.createChannel();
+
+  return new Promise(resolve => {
+    /** @returns {void} */
+    function check() {
+      channel.checkQueue(queue).then(qok => {
+        if (condition(qok)) {
+          connection.close();
+          return resolve(true);
+        }
+        process.nextTick(check);
+      });
+    }
+
+    check();
+  });
+}
+
 
 describe('Node AMQP Bus', function testBus() {
-  it('Should broadcast on all listening queues', function* testBroadcastDifferentQueues() {
-    const client = yield bus.createBusClient(URL);
-
-    let resolve1;
-    const p1 = new Promise(_resolve => resolve1 = _resolve);
-
-    yield client.listen('testBroadcastDifferentQueues-1', 'key', (message, callback) => {
-      resolve1(message);
-      callback();
+  describe('#createBusClient', () => {
+    it('should return an object with connection and channel', function* testCreateBusClient() {
+      const busClient = yield bus.createBusClient(URL);
+      (typeof(busClient.channel.publish)).should.equal('function');
+      (typeof(busClient.connection.close)).should.equal('function');
     });
-
-    let resolve2;
-    const p2 = new Promise(_resolve => resolve2 = _resolve);
-
-    yield client.listen('testBroadcastDifferentQueues-2', 'key', {}, (message, callback) => {
-      resolve2(message);
-      callback();
-    });
-
-    client.publish('key', { test: 'message' });
-
-    const message1 = yield p1;
-    message1.should.eql({ test: 'message' });
-
-    const message2 = yield p2;
-    message2.should.eql({ test: 'message' });
-
-    yield client.close();
   });
 
-  it('Should pass a message only once on a give queue', function* testQueueBehavior() {
-    const client = yield bus.createBusClient(URL);
-
-    let resolve1;
-    const p1 = new Promise(_resolve => resolve1 = _resolve);
-
-    yield client.listen('testQueueBehavior', 'key', (message, callback) => {
-      resolve1(message);
-      callback();
+  describe('#close', () => {
+    it('should close the connection', function* it() {
+      const busClient = yield bus.createBusClient(URL);
+      yield busClient.close();
+      (busClient.connection === null).should.equal(true);
     });
-
-    let resolve2;
-    const p2 = new Promise(_resolve => resolve2 = _resolve);
-
-    yield client.listen('testQueueBehavior', 'key', (message, callback) => {
-      resolve2(message);
-      callback();
-    });
-
-    client.publish('key', { test: 'message' });
-
-    yield Promise.race([p1, p2]);
-
-    (p1.isResolved() && !p2.isResolved() || !p1.isResolved() && p2.isResolved()).should.be.true();
-
-    yield client.channel.purgeQueue('testQueueBehavior');
-
-    yield client.close();
   });
 
-  it('Should pass a message to another queue if a given queue fails', function* testFallbackOtherQueue() {
-    const client = yield bus.createBusClient(URL);
+  describe('once the bus client is initialized', () => {
+    const queue = 'test-queue';
+    const exchange = 'test-exchange';
+    const rootingKey = 'test-key';
+    const messageContent = { toto: 'test' };
+    let busClient;
 
-    yield client.listen('testFallbackOtherQueue-fail', 'key', (message, callback) => {
-      callback(new Error('Fail'));
+    beforeEach(function* beforeEach() {
+      const connection = yield amqplib.connect(URL);
+      const channel = yield connection.createChannel();
+      yield channel.deleteQueue(queue);
+      yield channel.deleteExchange(exchange);
+      yield connection.close();
+      busClient = yield bus.createBusClient(URL);
+    });
+    afterEach(function* afterEach() {
+      busClient.close();
     });
 
-    let resolve2;
-    const p2 = new Promise(_resolve => resolve2 = _resolve);
+    describe('#setupQueue', () => {
+      it('should create an exchange, a queue and a binding', function*testCreateBusClient() {
+        yield busClient.setupQueue(exchange, queue, rootingKey);
 
-    yield client.listen('testFallbackOtherQueue-ok', 'key', (message, callback) => {
-      resolve2(message);
-      callback();
+        const createdQueue = yield busClient.channel.checkQueue(queue);
+        createdQueue.queue.should.equal(queue);
+      });
+
+      it('should bind queue to rootingKey', function* it() {
+        yield busClient.setupQueue(exchange, queue, rootingKey);
+
+        busClient.channel.publish(exchange, rootingKey, new Buffer('toto'));
+        yield waitForQueue(queue, qok => qok.messageCount === 1);
+        const message = yield busClient.channel.get(queue);
+        message.content.toString().should.eql('toto');
+      });
     });
 
-    client.publish('key', { test: 'message' });
+    describe('#publish', () => {
+      it('should publish a message to the queue bind with the rootingKey', function* it() {
+        yield busClient.setupQueue(exchange, queue, rootingKey);
 
-    yield p2;
+        busClient.publish(exchange, rootingKey, messageContent);
+        yield waitForQueue(queue, qok => qok.messageCount === 1);
+        const message = yield busClient.channel.get(queue);
+        JSON.parse(message.content).should.eql(messageContent);
+      });
+    });
 
-    p2.isResolved().should.be.true();
+    describe('#consume', () => {
+      let fakeHandler;
 
-    yield client.close();
+      beforeEach(() => { fakeHandler = sinon.spy(); });
+      afterEach(() => { fakeHandler.reset(); });
+
+      it('should consume previous events with the handler and acknowledge message', function* it() {
+        yield busClient.setupQueue(exchange, queue, rootingKey);
+
+        function* handler(content, fields, callback) {
+          fakeHandler(content);
+          callback();
+        }
+        yield busClient.consume(queue, handler);
+
+        busClient.publish(exchange, rootingKey, messageContent);
+        yield waitForQueue(queue, qok => qok.messageCount === 0);
+        fakeHandler.calledWith(messageContent).should.be.true();
+
+        yield busClient.close();
+        yield waitForQueue(queue, qok => qok.messageCount === 0);
+      });
+
+      it('should acknowledge message if handler calls callback without error', function* it() {
+        yield busClient.setupQueue(exchange, queue, rootingKey);
+
+        function* handler(content) { fakeHandler(content); }
+
+        yield busClient.consume(queue, handler);
+
+        busClient.publish(exchange, rootingKey, messageContent);
+        yield waitForQueue(queue, qok => qok.messageCount === 0);
+        fakeHandler.calledWith(messageContent).should.be.true();
+
+        yield busClient.close();
+        yield waitForQueue(queue, qok => qok.messageCount === 0);
+      });
+
+      it('should not acknowledge message if handling throws Error', function* it() {
+        yield busClient.setupQueue(exchange, queue, rootingKey);
+
+        function* handler(content) {
+          fakeHandler(content);
+          throw new Error('Bad handler');
+        }
+
+        yield busClient.consume(queue, handler);
+
+        busClient.publish(exchange, rootingKey, messageContent);
+        yield waitForQueue(queue, qok => qok.messageCount === 0);
+        fakeHandler.calledWith(messageContent).should.be.true();
+
+        yield busClient.close();
+        yield waitForQueue(queue, qok => qok.messageCount === 1);
+      });
+
+      it('should not acknowledge message if handler calls callback with error', function* it() {
+        yield busClient.setupQueue(exchange, queue, rootingKey);
+
+        function* handler(content, fields, callback) {
+          fakeHandler(content);
+          callback(new Error());
+        }
+
+        yield busClient.consume(queue, handler);
+
+        busClient.publish(exchange, rootingKey, messageContent);
+        yield waitForQueue(queue, qok => qok.messageCount === 0);
+        fakeHandler.calledWith(messageContent).should.be.true();
+
+        yield busClient.close();
+        yield waitForQueue(queue, qok => qok.messageCount === 1);
+      });
+    });
+
+    describe('#listen', () => {
+      let fakeHandler;
+
+      beforeEach(() => { fakeHandler = sinon.spy(); });
+      afterEach(() => { fakeHandler.reset(); });
+
+      it('should setup queue and consume messages', function* it() {
+        function* handler(content) { fakeHandler(content); }
+        yield busClient.listen(exchange, queue, rootingKey, handler);
+        busClient.publish(exchange, rootingKey, messageContent);
+
+        yield busClient.consume(queue, handler);
+        yield waitForQueue(queue, qok => qok.messageCount === 0);
+        fakeHandler.calledWith(messageContent).should.be.true();
+
+        yield busClient.close();
+        yield waitForQueue(queue, qok => qok.messageCount === 0);
+      });
+    });
   });
 });

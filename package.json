@@ -1,6 +1,6 @@
 {
   "name": "node-amqp-bus",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "Implement a Bus using AMQP in nodejs",
   "main": "index.js",
   "repository": {
@@ -18,7 +18,6 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "bluebird": "^3.2.1",
     "co-mocha": "^1.1.2",
     "eslint": "^1.10.3",
     "eslint-config-cp": "github:transcovo/eslint-config-cp#1.0.3",

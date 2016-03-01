@@ -25,11 +25,11 @@ Close client
 
 Publish an event to the bus:
 
-    client.publish('the-key', message);
+    client.publish('your-exchange', 'the-key', message);
 
 Use the client to listen to the bus:
 
-    yield client.listen('the-queue', 'the-key', (message, callback) => {
+    yield client.listen('your-exchange', 'the-queue', 'the-key', (message, callback) => {
 
       // ... process message ...
 
@@ -38,7 +38,7 @@ Use the client to listen to the bus:
 
 If you need to pass additionnal options to AMQP:
 
-    yield client.listen('the-queue', 'the-key', options, (message, callback) => {
+    yield client.listen('your-exchange', 'the-queue', 'the-key', options, (message, callback) => {
 
       // ... process message ...
 
@@ -47,7 +47,7 @@ If you need to pass additionnal options to AMQP:
 
 If you want to message to be reinjected in the queue because you failed:
 
-    yield client.listen('the-queue', 'the-key', options, (message, callback) => {
+    yield client.listen('your-exchange', 'the-queue', 'the-key', options, (message, callback) => {
 
       // ... process message ...
 
@@ -61,6 +61,4 @@ You can directly access to the raw connection and channel objects:
 
 ## Developement system dependencies
 
-To run the tests, you need a local RabbitMQ. The simplest way to do this with the
-exact versions used in production is to use the Dockerfile available here: https://github.com/transcovo/environments-tech/tree/master/docker
-
+To run the tests, you need a local RabbitMQ responding on 'amqp://guest:guest@localhost:5672'.
