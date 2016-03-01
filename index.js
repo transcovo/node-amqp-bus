@@ -1,39 +1,116 @@
 'use strict';
 
-const co = require('co');
 const amqplib = require('amqplib');
+const co = require('co');
 
-const EXCHANGE = 'bus';
-const EXCHANGE_TYPE = 'topic';
+const DEFAULT_EXCHANGE_TYPE = 'topic';
+const DEFAULT_HEARTBEAT = 10;
 
-module.exports.createBusClient = co.wrap(function* createBusClient(url) {
-  const connection = yield amqplib.connect(url);
+/**
+ * Return a bus client with helper methods to communicate with an amqp server.
+ *
+ * @name  createBusClient.
+ * @param {String} url : The url of your amqp server.
+ * @param {Object} [options]
+ * @param {Number} [options.heartbeat] : the heartbeat that you want to use.
+ */
+function* createBusClient(url, options) {
+  options = options || {};
+  options.heartbeat = options.heartbeat || DEFAULT_HEARTBEAT;
+  const connection = yield amqplib.connect(url, options);
   const channel = yield connection.createChannel();
-
-  return {
-    connection,
+  const busClient = {
     channel,
-    listen: (queue, routingKey, options, listener) => co(function* listen() {
-      if (!listener) {
-        listener = options;
-        options = {};
-      }
-      yield channel.assertQueue(queue, options);
-      yield channel.assertExchange(EXCHANGE, EXCHANGE_TYPE);
-      yield channel.bindQueue(queue, EXCHANGE, routingKey);
-      channel.consume(queue, message => {
-        listener(JSON.parse(message.content), err => {
-          return channel[err ? 'reject' : 'ack'](message);
-        });
-      });
-    }),
-    publish: (routingKey, message, options) => channel.publish(EXCHANGE, routingKey, new Buffer(JSON.stringify(message)), options),
-    close: () => co(function* close() {
-      try {
-        yield channel.close();
-      } finally {
-        yield connection.close();
-      }
-    })
+    connection,
+    setupQueue,
+    consume,
+    listen,
+    publish,
+    close: function* close() {
+      yield connection.close();
+      this.connection = null;
+      this.channel = null;
+    }
   };
-});
+  return busClient;
+
+  /**
+   * Check that exchange and queue are created and bind exchange to queue with rooting key.
+   *
+   * @name  setupQueue
+   * @param {String} exchange : the name of the exchange on which you want to connect.
+   * @param {String} queue : the queue name
+   * @param {String} rootingKey : the rooting that you want to bind.
+   * @param {Object} [opts] : various options
+   * @param {Object} [opts.exchangeType] : the type of exchange you want to use, default to
+   * 'topic'
+   * @param {Object} [opts.queueOptions] : options that you want to pass to your queue when
+   * creating it.
+   */
+  function* setupQueue(exchange, queue, rootingKey, opts) {
+    opts = opts || {};
+    yield channel.assertExchange(exchange, opts.exchangeType || DEFAULT_EXCHANGE_TYPE);
+    yield channel.assertQueue(queue, opts.queueOptions || {});
+    yield channel.bindQueue(queue, exchange, rootingKey);
+  }
+
+  /**
+   * Pass message content from messages received on queue to handler.
+   * Acknowledge message if handling is succesfull.
+   * Requeue message if handling throws an error.
+   *
+   * @name  consume
+   * @param {String} queue : the queue name
+   * @param {Function} handler : should be yieldable,
+   * will be called with message.content and message.fields
+   */
+  function* consume(queue, handler) {
+    yield channel.consume(queue, co.wrap(function* _consumeMessage(message) {
+      const content = JSON.parse(message.content.toString());
+      let messageAcknowledgementHandled = false;
+      try {
+        yield handler(content, message.fields, (err) => {
+          messageAcknowledgementHandled = true;
+          if (err) return channel.nack(message);
+          return channel.ack(message);
+        });
+      } catch (err) {
+        messageAcknowledgementHandled = true;
+        return channel.nack(message);
+      }
+      if (messageAcknowledgementHandled) return undefined;
+      messageAcknowledgementHandled = true;
+      return channel.ack(message);
+    }));
+  }
+
+  /**
+   * Setup a queue and start consuming on it.
+   * This method is a wrapper around the setupQueue and consume function.
+   *
+   * @name  listen
+   * @param {String} exchange : the name of the exchange on which you want to connect.
+   * @param {String} queue : the queue name
+   * @param {String} rootingKey : the rooting that you want to bind.
+   * @param {Function} handler : should be yieldable,
+   * @param {Object} [opts] : various options that will be passed to the setupQueue method
+   */
+  function* listen(exchange, queue, rootingKey, handler, opts) {
+    yield setupQueue(exchange, queue, rootingKey, opts);
+    yield consume(queue, handler);
+  }
+
+  /**
+   * Publish a message to an exchange with the given rooting key.
+   *
+   * @param  {String} exchange: The exchange on which you want to publish.
+   * @param  {queue} rootingKey: The rooting key for your message.
+   * @param  {Object} message: Your message.
+   * @param  {Object} opts: options passsed to the publish function.
+   */
+  function publish(exchange, rootingKey, message, opts) {
+    channel.publish(exchange, rootingKey, new Buffer(JSON.stringify(message)), opts);
+  }
+}
+
+module.exports = { createBusClient };
