@@ -1,6 +1,6 @@
 {
   "name": "@chauffeur-prive/node-amqp-bus",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "Implement a Bus using AMQP in nodejs",
   "repository": {
     "type": "git",
@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "amqplib": "^0.4.0",
+    "chpr-logger": "^2.1.1",
     "co": "^4.6.0"
   },
   "engines": {

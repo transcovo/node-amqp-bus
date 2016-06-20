@@ -2,6 +2,7 @@
 
 const amqplib = require('amqplib');
 const co = require('co');
+const logger = require('chpr-logger');
 
 const DEFAULT_EXCHANGE_TYPE = 'topic';
 const DEFAULT_HEARTBEAT = 10;
@@ -63,20 +64,27 @@ function* createBusClient(url, options) {
    * @name  consume
    * @param {String} queue : the queue name
    * @param {Function} handler : should be yieldable,
-   * will be called with message.content and message.fields
+   * will be called with message.content and message.fields.
+   * It should wrap its logic within a try...catch to treat errors that are thrown
+   * and should only throw error when the message needs to be requeued.
    */
   function* consume(queue, handler) {
     yield channel.consume(queue, co.wrap(function* _consumeMessage(message) {
-      const content = JSON.parse(message.content.toString());
       let messageAcknowledgementHandled = false;
+      const contentString = message.content.toString();
       try {
+        const content = JSON.parse(contentString);
         yield handler(content, message.fields, (err) => {
           messageAcknowledgementHandled = true;
-          if (err) return channel.nack(message);
+          if (err) {
+            logger.warn({ err, content: contentString, fields: message.fields }, '[node-amqp-bus#consume] Consumer handler failed');
+            return channel.nack(message);
+          }
           return channel.ack(message);
         });
       } catch (err) {
         messageAcknowledgementHandled = true;
+        logger.warn({ err, content: contentString, fields: message.fields }, '[node-amqp-bus#consume] Consumer handler failed');
         return channel.nack(message);
       }
       if (messageAcknowledgementHandled) return undefined;
