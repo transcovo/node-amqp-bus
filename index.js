@@ -72,8 +72,16 @@ function* createBusClient(url, options) {
     yield channel.consume(queue, co.wrap(function* _consumeMessage(message) {
       let messageAcknowledgementHandled = false;
       const contentString = message.content.toString();
+      let content;
+
       try {
-        const content = JSON.parse(contentString);
+        content = JSON.parse(contentString);
+      } catch (err) {
+        logger.error({ err, content }, '[node-amqp-bus#consume] Content is not a valid JSON');
+        return channel.ack(message);
+      }
+
+      try {
         yield handler(content, message.fields, (err) => {
           messageAcknowledgementHandled = true;
           if (err) {

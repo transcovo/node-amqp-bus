@@ -105,9 +105,10 @@ describe('Node AMQP Bus', function testBus() {
 
     describe('#consume', () => {
       let fakeHandler;
+      const sandbox = sinon.sandbox.create();
 
-      beforeEach(() => { fakeHandler = sinon.spy(); });
-      afterEach(() => { fakeHandler.reset(); });
+      beforeEach(() => { fakeHandler = sandbox.spy(); });
+      afterEach(() => { sandbox.restore(); });
 
       it('should consume previous events with the handler and acknowledge message', function* it() {
         yield busClient.setupQueue(exchange, queue, rootingKey);
@@ -175,6 +176,24 @@ describe('Node AMQP Bus', function testBus() {
 
         yield busClient.close();
         yield waitForQueue(queue, qok => qok.messageCount === 1);
+      });
+
+      it('should acknowledge message if message is not JSON', function* it() {
+        yield busClient.setupQueue(exchange, queue, rootingKey);
+        const ackStub = sandbox.spy(busClient.channel, 'ack');
+
+        function* handler(content, fields, callback) {
+          fakeHandler(content);
+          callback(new Error());
+        }
+
+        yield busClient.consume(queue, handler);
+        // the client stringify the message, so we use the channel directly
+        busClient.channel.publish(exchange, rootingKey, new Buffer('coucou'));
+        yield waitForQueue(queue, qok => qok.messageCount === 0);
+
+        ackStub.calledOnce.should.be.true();
+        fakeHandler.called.should.be.false();
       });
     });
 
