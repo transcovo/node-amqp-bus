@@ -13,51 +13,50 @@ Implements a simple bus client to exchange JSON message on queues using AMQP ser
 
     const bus = require('node-amqp-bus');
 
-## Examples
+## API
 
-Create a client:
+### bus.createBusClient(url)
 
-    const client = yield bus.createBusClient(URL);
-    
-Close client
+Creates a client. Returns a `Promise` of the client.
 
-    client.close(); // return a promise
+    const client = yield bus.createBusClient(url);
 
-Publish an event to the bus:
+### client.close()
+
+Closes the client. Returns a `Promise`.
+
+    client.close();
+
+### client.publish(exchangeName, messageKey, message)
+
+Publishes an event to the bus.
 
     client.publish('your-exchange', 'the-key', message);
 
-Use the client to listen to the bus:
+### client.listen(exchangeName, queueName, messageKey, handler, options)
 
-    yield client.listen('your-exchange', 'the-queue', 'the-key', (message, callback) => {
+Listens on the bus, on the exchange / queue and to the key specified.
 
-      // ... process message ...
+The handler parameter can be a function or a generator, called with the following arguments:
 
-      callback();
+ - `message`: the message received,
+ - `fields`: information about the message (primarily used by the `amqplib` library),
+ - [DEPRECATED: YOU MUST NOT USE THIS API] `callback([error])`: a callback method.
+
+
+If you use a generator just throw an error to `nack` the message.
+
+    yield client.listen('your-exchange', 'the-queue', 'the-key', function* (message, fields) {
+      yield ...
     });
 
-If you need to pass additionnal options to AMQP:
+### client.connection
 
-    yield client.listen('your-exchange', 'the-queue', 'the-key', options, (message, callback) => {
+Raw connection object.
 
-      // ... process message ...
+### client.channel
 
-      callback();
-    });
-
-If you want to message to be reinjected in the queue because you failed:
-
-    yield client.listen('your-exchange', 'the-queue', 'the-key', options, (message, callback) => {
-
-      // ... process message ...
-
-      callback(new Error('Epic fail'));
-    });
-    
-You can directly access to the raw connection and channel objects:
-
-    client.connection
-    client.channel
+Raw channel object.
 
 ## Developement system dependencies
 
