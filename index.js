@@ -124,9 +124,10 @@ function* createBusClient(url, options) {
    * @param  {queue} rootingKey: The rooting key for your message.
    * @param  {Object} message: Your message.
    * @param  {Object} opts: options passsed to the publish function.
+   * @return {Boolean} true if the message was written, false else
    */
   function publish(exchange, rootingKey, message, opts) {
-    channel.publish(exchange, rootingKey, new Buffer(JSON.stringify(message)), opts);
+    return channel.publish(exchange, rootingKey, new Buffer(JSON.stringify(message)), opts);
   }
 }
 
