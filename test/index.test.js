@@ -96,7 +96,9 @@ describe('Node AMQP Bus', function testBus() {
       it('should publish a message to the queue bind with the rootingKey', function* it() {
         yield busClient.setupQueue(exchange, queue, rootingKey);
 
-        busClient.publish(exchange, rootingKey, messageContent);
+        const result = busClient.publish(exchange, rootingKey, messageContent);
+
+        result.should.equal(true);
         yield waitForQueue(queue, qok => qok.messageCount === 1);
         const message = yield busClient.channel.get(queue);
         JSON.parse(message.content).should.eql(messageContent);
