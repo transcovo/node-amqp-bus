@@ -35,6 +35,12 @@ Publishes an event to the bus.
 
 ### client.listen(exchangeName, queueName, messageKey, handler, options)
 
+DANGER: READ THE CODE TO UNDERSTAND HOW LISTEN WORKS:
+
+`messageKey` SHOULD ONLY BE USED TO DO AMQP ROUTING, NOT APPLICATION ROUTING.
+
+IF YOU WANT APPLICATION ROUTING, DO IT YOURSELF.
+
 Listens on the bus, on the exchange / queue and to the key specified.
 
 The handler parameter can be a function or a generator, called with the following arguments:
