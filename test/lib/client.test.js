@@ -115,9 +115,8 @@ describe('Node AMQP Bus Client', function testBus() {
       it('should consume previous events with the handler and acknowledge message', function* it() {
         yield busClient.setupQueue(exchange, queue, rootingKey);
 
-        function* handler(content, fields, callback) {
-          fakeHandler(content);
-          callback();
+        function* handler(content, fields) {
+          fakeHandler(content, fields);
         }
         yield busClient.consume(queue, handler);
 
