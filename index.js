@@ -1,6 +1,6 @@
 'use strict';
 
-const createBusClient = require('./lib/client');
-const createBusListener = require('./lib/listener');
+const createClient = require('./lib/client');
+const createListener = require('./lib/listener');
 
-module.exports = { createBusClient, createBusListener };
+module.exports = { createClient, createListener };
