@@ -13,7 +13,39 @@ Implements a simple bus client to exchange JSON message on queues using AMQP ser
 
     const bus = require('node-amqp-bus');
 
-## API
+## Listener API
+
+### bus.createBusListener(url, [options])
+
+Creates a listener, returns a `Listener` instance. the `options` parameter can contain a `client`
+that is a node-amqp-bus client.
+
+```
+const listener = bus.createBusListener(url);
+```
+
+or
+
+```
+const client = yield bus.createBusClient(url);
+const listener = yield bus.createBusListener(url, { client });
+```
+
+Note: in this case, `url` is ignored in the createBusListener call.
+
+### listener.addHandler(queue, key, handler)
+
+Add a new handler to the listener. If you add two handlers with the same queue and key
+
+### EventEmitter interface
+
+You can use `listener` as an EventEmitter. It emits the following events =
+
+  - `connect()` : emitted once, when the first call to listen() is made
+  - `consume_error(err, { err, queue, message })` : emitted when a message cannot be consumed
+    correctly by the client (not a JSON, handler failed)
+
+## Client API
 
 ### bus.createBusClient(url)
 
@@ -43,11 +75,10 @@ IF YOU WANT APPLICATION ROUTING, DO IT YOURSELF.
 
 Listens on the bus, on the exchange / queue and to the key specified.
 
-The handler parameter can be a function or a generator, called with the following arguments:
+The handler parameter must be a yieldable, called with the following arguments:
 
- - `message`: the message received,
- - `fields`: information about the message (primarily used by the `amqplib` library),
- - [DEPRECATED: YOU MUST NOT USE THIS API] `callback([error])`: a callback method.
+ - `message`: the message received
+ - `fields`: information about the message (primarily used by the `amqplib` library)
 
 
 If you use a generator just throw an error to `nack` the message.
