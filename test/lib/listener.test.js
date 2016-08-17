@@ -2,10 +2,11 @@
 
 const { expect } = require('chai');
 const sinon = require('sinon');
+const logger = require('chpr-logger');
 
 const bus = require('../../index.js');
 
-describe.only('Node AMQP Bus Listener', function testBus() {
+describe('Node AMQP Bus Listener', function testBus() {
   describe('#createListener()', function () {
     it('should create a listener', function () {
       let listener;
@@ -26,20 +27,19 @@ describe.only('Node AMQP Bus Listener', function testBus() {
 
       expect(listener).to.have.property('queues');
       expect(listener).to.have.property('handlers');
-      expect(listener).to.have.property('on');
       expect(listener).to.have.property('listen');
-      expect(listener).to.have.property('connection');
+      expect(listener).to.have.property('addHandler');
       expect(listener).to.have.property('client');
     });
   });
 
-  describe('#on()', function () {
+  describe('#addHandler()', function () {
     it('should declare a handler', function () {
       let error;
       const listener = bus.createListener();
 
       try {
-        listener.on('my-queue', 'my-key', function myFunc() {});
+        listener.addHandler('my-queue', 'my-key', function myFunc() {});
       } catch (e) {
         error = e;
       }
@@ -50,10 +50,10 @@ describe.only('Node AMQP Bus Listener', function testBus() {
     it('should create relevant structs', function () {
       const listener = bus.createListener();
 
-      listener.on('my-queue-1', 'my-key-1', function myFunc1() {});
-      listener.on('my-queue-1', 'my-key-2', function myFunc2() {});
-      listener.on('my-queue-2', 'my-key-3', function myFunc3() {});
-      listener.on('my-queue-3', 'my-key-4', function myFunc4() {});
+      listener.addHandler('my-queue-1', 'my-key-1', function myFunc1() {});
+      listener.addHandler('my-queue-1', 'my-key-2', function myFunc2() {});
+      listener.addHandler('my-queue-2', 'my-key-3', function myFunc3() {});
+      listener.addHandler('my-queue-3', 'my-key-4', function myFunc4() {});
 
       expect(listener.handlers).to.have.deep.property('my-queue-1.my-key-1');
       expect(listener.handlers).to.have.deep.property('my-queue-1.my-key-2');
@@ -75,7 +75,12 @@ describe.only('Node AMQP Bus Listener', function testBus() {
     });
 
     it('should listen to the exchange (first call)', function*() {
-      const service = bus.createListener();
+      const client = {
+        setupQueue: sandbox.stub().returns(Promise.resolve()),
+        consume: sandbox.stub().returns(Promise.resolve()),
+        on: sandbox.stub()
+      };
+      const service = bus.createListener('url', { client });
 
       const queue1 = 'MY_QUEUE_NAME_1';
       const key1 = 'SOME_EVENT_1';
@@ -83,31 +88,25 @@ describe.only('Node AMQP Bus Listener', function testBus() {
       const key2 = 'SOME_EVENT_2';
       const handler2 = function* anotherHandler() {};
       const queue2 = 'MY_QUEUE_NAME_2';
-      const handler3 = function* anotherAnotherHandler() {};
 
-      service.on(queue1, key1, handler1);
-      service.on(queue1, key2, handler2);
-      service.on(queue2, key1, handler3);
+      service.addHandler(queue1, key1, handler1);
+      service.addHandler(queue2, key2, handler2);
 
-      const client = {
-        setupQueue: () => null,
-        consume: () => null
-      };
-      sandbox.stub(bus, 'createListener', () => Promise.resolve(client));
+      yield service.listen('EXCHANGE');
 
-      const thingy = service.listen('EXCHANGE');
-      console.log(thingy, thingy instanceof Promise);
-      yield thingy;
-
-      expect(bus.createservice.callCount).to.equal(1);
-      expect(service.client.setupQueue.callCount).to.equal(3);
-      expect(service.client.consume.callCount).to.equal(2);
-      expect(service.client.consume.getCall(0).args[0], 'MY_QUEUE_NAME_1');
-      expect(service.client.consume.getCall(1).args[0], 'MY_QUEUE_NAME_2');
+      expect(client.setupQueue.callCount).to.equal(2);
+      expect(client.consume.callCount).to.equal(2);
+      expect(client.consume.getCall(0).args[0], 'MY_QUEUE_NAME_1');
+      expect(client.consume.getCall(1).args[0], 'MY_QUEUE_NAME_2');
     });
 
     it('should call the right handler', function*() {
-      const service = bus.createListener();
+      const client = {
+        setupQueue: sandbox.stub().returns(Promise.resolve()),
+        consume: sandbox.stub().returns(Promise.resolve()),
+        on: sandbox.stub()
+      };
+      const service = bus.createListener('url', { client });
 
       const queue1 = 'MY_QUEUE_NAME_1';
       const key1 = 'SOME_EVENT_1';
@@ -117,17 +116,10 @@ describe.only('Node AMQP Bus Listener', function testBus() {
       const queue2 = 'MY_QUEUE_NAME_2';
       const handler3 = function* anotherAnotherHandler() {};
 
-      service.on(queue1, key1, handler1);
-      service.on(queue1, key2, handler2);
-      service.on(queue2, key1, handler3);
+      service.addHandler(queue1, key1, handler1);
+      service.addHandler(queue1, key2, handler2);
+      service.addHandler(queue2, key1, handler3);
 
-      const client = {
-        setupQueue: () => null,
-        consume: () => null
-      };
-      sandbox.stub(client, 'setupQueue', () => Promise.resolve());
-      sandbox.stub(client, 'consume', () => Promise.resolve());
-      sandbox.stub(bus, 'createBusClient', () => Promise.resolve(client));
       sandbox.stub(logger, 'info');
 
       yield service.listen('EXCHANGE');
@@ -159,19 +151,19 @@ describe.only('Node AMQP Bus Listener', function testBus() {
     });
 
     it('should call the right handler (unknown handler)', function*() {
+      const client = {
+        setupQueue: sandbox.stub().returns(Promise.resolve()),
+        consume: sandbox.stub().returns(Promise.resolve()),
+        on: sandbox.stub()
+      };
+      const service = bus.createListener('url', { client });
+
       const queue1 = 'MY_QUEUE_NAME_1';
       const key1 = 'SOME_EVENT_1';
       const handler1 = function* someHandler() {};
 
-      service.on(queue1, key1, handler1);
+      service.addHandler(queue1, key1, handler1);
 
-      const client = {
-        setupQueue: () => null,
-        consume: () => null
-      };
-      sandbox.stub(client, 'setupQueue', () => Promise.resolve());
-      sandbox.stub(client, 'consume', () => Promise.resolve());
-      sandbox.stub(bus, 'createBusClient', () => Promise.resolve(client));
       sandbox.stub(logger, 'info');
 
       yield service.listen('EXCHANGE');
@@ -196,6 +188,13 @@ describe.only('Node AMQP Bus Listener', function testBus() {
     });
 
     it('should listen to the exchange (connection already exists)', function*() {
+      const client = {
+        setupQueue: sandbox.stub().returns(Promise.resolve()),
+        consume: sandbox.stub().returns(Promise.resolve()),
+        on: sandbox.stub()
+      };
+      const service = bus.createListener('url', { client });
+
       let error;
 
       try {
@@ -205,6 +204,30 @@ describe.only('Node AMQP Bus Listener', function testBus() {
       }
 
       expect(error).to.not.exist();
+    });
+
+    it('should not reconnect twice', function* test() {
+      const service = bus.createListener('amqp://localhost');
+      const connectStub = sandbox.stub();
+      service.on('connect', connectStub);
+      yield service.listen('EXCHANGE');
+      yield service.listen('EXCHANGE');
+
+      expect(connectStub.callCount).to.equal(1);
+    });
+
+    it('should emit an event when consume fail', function* test() {
+      const service = bus.createListener('amqp://localhost');
+      const errorStub = sandbox.stub();
+
+      service.on('handle_error', errorStub);
+
+      yield service.listen('EXCHANGE');
+
+      const err = new Error();
+      const metadata = {};
+      service.client.emit('consume_error', err, metadata);
+      expect(errorStub.calledOnce).to.be.true();
     });
   });
 });
