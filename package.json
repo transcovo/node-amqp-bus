@@ -1,6 +1,6 @@
 {
   "name": "@chauffeur-prive/node-amqp-bus",
-  "version": "3.1.0",
+  "version": "4.0.0",
   "description": "Implement a Bus using AMQP in nodejs",
   "repository": {
     "type": "git",
@@ -13,13 +13,16 @@
   },
   "scripts": {
     "lint": "eslint .",
-    "coverage": "istanbul cover node_modules/.bin/_mocha ./test --recursive",
-    "test": "npm run-script coverage && npm run-script lint"
+    "coverage": "istanbul cover _mocha ./test --recursive",
+    "mocha": "mocha ./test --recursive --bail",
+    "test": "npm run coverage && npm run lint"
   },
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "chai": "^3.5.0",
     "co-mocha": "^1.1.2",
+    "dirty-chai": "^1.2.2",
     "eslint": "^1.10.3",
     "eslint-config-cp": "github:transcovo/eslint-config-cp#1.0.3",
     "istanbul": "^0.4.2",
@@ -33,6 +36,6 @@
     "co": "^4.6.0"
   },
   "engines": {
-    "node": "^4.2.6"
+    "node": "6.3.1"
   }
 }

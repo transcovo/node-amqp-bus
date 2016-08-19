@@ -4,7 +4,7 @@ require('co-mocha')(require('mocha'));
 require('should');
 const amqplib = require('amqplib');
 
-const bus = require('../index');
+const createBusClient = require('../../lib/client');
 const URL = 'amqp://guest:guest@localhost:5672';
 const sinon = require('sinon');
 
@@ -38,10 +38,10 @@ function* waitForQueue(queue, condition) {
 }
 
 
-describe('Node AMQP Bus', function testBus() {
+describe('Node AMQP Bus Client', function testBus() {
   describe('#createBusClient', () => {
     it('should return an object with connection and channel', function* testCreateBusClient() {
-      const busClient = yield bus.createBusClient(URL);
+      const busClient = yield createBusClient(URL);
       (typeof(busClient.channel.publish)).should.equal('function');
       (typeof(busClient.connection.close)).should.equal('function');
     });
@@ -49,7 +49,7 @@ describe('Node AMQP Bus', function testBus() {
 
   describe('#close', () => {
     it('should close the connection', function* it() {
-      const busClient = yield bus.createBusClient(URL);
+      const busClient = yield createBusClient(URL);
       yield busClient.close();
       (busClient.connection === null).should.equal(true);
     });
@@ -68,7 +68,7 @@ describe('Node AMQP Bus', function testBus() {
       yield channel.deleteQueue(queue);
       yield channel.deleteExchange(exchange);
       yield connection.close();
-      busClient = yield bus.createBusClient(URL);
+      busClient = yield createBusClient(URL);
     });
     afterEach(function* afterEach() {
       busClient.close();
@@ -115,9 +115,8 @@ describe('Node AMQP Bus', function testBus() {
       it('should consume previous events with the handler and acknowledge message', function* it() {
         yield busClient.setupQueue(exchange, queue, rootingKey);
 
-        function* handler(content, fields, callback) {
-          fakeHandler(content);
-          callback();
+        function* handler(content, fields) {
+          fakeHandler(content, fields);
         }
         yield busClient.consume(queue, handler);
 
