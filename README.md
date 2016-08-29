@@ -42,7 +42,7 @@ Add a new handler to the listener. If you add two handlers with the same queue a
 You can use `listener` as an EventEmitter. It emits the following events =
 
   - `connect()` : emitted once, when the first call to listen() is made
-  - `consume_error(err, { err, queue, message })` : emitted when a message cannot be consumed
+  - `handle_error(err, { err, queue, message })` : emitted when a message cannot be consumed
     correctly by the client (not a JSON, handler failed)
 
 ## Client API
@@ -65,6 +65,8 @@ Publishes an event to the bus.
 
     client.publish('your-exchange', 'the-key', message);
 
+The message needs to be in JSON format otherwise an error will be thrown.
+
 ### client.listen(exchangeName, queueName, messageKey, handler, options)
 
 DANGER: READ THE CODE TO UNDERSTAND HOW LISTEN WORKS:
@@ -82,6 +84,8 @@ The handler parameter must be a yieldable, called with the following arguments:
 
 
 If you use a generator just throw an error to `nack` the message.
+Be careful, a throw nack the message. Thus the message is re-inserted in the queue. You need to
+handle the number of times a message can be queued before being dismissed. For example, a message with a bas format will always throw. So there is a risk to be in a infinite loop.
 
     yield client.listen('your-exchange', 'the-queue', 'the-key', function* (message, fields) {
       yield ...
