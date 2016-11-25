@@ -33,9 +33,11 @@ const listener = yield bus.createBusListener(url, { client });
 
 Note: in this case, `url` is ignored in the createBusListener call.
 
-### listener.addHandler(queue, key, handler)
+### listener.addHandler(queue, key, handler, options)
 
 Add a new handler to the listener. If you add two handlers with the same queue and key
+
+`options` will be passed to `client.createQueue`.
 
 ### EventEmitter interface
 

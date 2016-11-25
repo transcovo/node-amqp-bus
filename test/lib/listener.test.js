@@ -206,6 +206,29 @@ describe('Node AMQP Bus Listener', function testBus() {
       expect(error).to.not.exist();
     });
 
+    it('should call client.setupQueue with all parameters', function*() {
+      const client = {
+        setupQueue: sandbox.stub().returns(Promise.resolve()),
+        consume: sandbox.stub().returns(Promise.resolve()),
+        on: sandbox.stub()
+      };
+      const service = bus.createListener('url', { client });
+      const queue1 = 'MY_QUEUE_NAME_1';
+      const key1 = 'SOME_EVENT_1';
+      const handler1 = function* someHandler() {};
+      service.addHandler(queue1, key1, handler1);
+
+      yield service.listen('EXCHANGE', { exchangeType: 'fanout' });
+
+      expect(client.setupQueue.args[0]).to.have.lengthOf(4);
+      expect(client.setupQueue.args[0]).to.eql([
+        'EXCHANGE',
+        'MY_QUEUE_NAME_1',
+        'SOME_EVENT_1',
+        { exchangeType: 'fanout' }
+      ]);
+    });
+
     it('should not reconnect twice', function* test() {
       const service = bus.createListener('amqp://localhost');
       const connectStub = sandbox.stub();
