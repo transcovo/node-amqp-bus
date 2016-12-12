@@ -237,7 +237,7 @@ describe('Node AMQP Bus Client', function testBus() {
         onConnectedSpy.callCount.should.equal(0);
 
         // wait for the reconnectTimeout
-        yield cb => setTimeout(cb, 100);
+        yield cb => setTimeout(cb, 200);
 
         onConnectedSpy.callCount.should.equal(1);
       });
