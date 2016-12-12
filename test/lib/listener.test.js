@@ -7,8 +7,8 @@ const logger = require('chpr-logger');
 const bus = require('../../index.js');
 
 describe('Node AMQP Bus Listener', function testBus() {
-  describe('#createListener()', function () {
-    it('should create a listener', function () {
+  describe('#createListener()', () => {
+    it('should create a listener', () => {
       let listener;
       let error;
 
@@ -22,7 +22,7 @@ describe('Node AMQP Bus Listener', function testBus() {
       expect(listener).to.exist();
     });
 
-    it('should create a listener with all the properties', function () {
+    it('should create a listener with all the properties', () => {
       const listener = bus.createListener();
 
       expect(listener).to.have.property('queues');
@@ -33,8 +33,8 @@ describe('Node AMQP Bus Listener', function testBus() {
     });
   });
 
-  describe('#addHandler()', function () {
-    it('should declare a handler', function () {
+  describe('#addHandler()', () => {
+    it('should declare a handler', () => {
       let error;
       const listener = bus.createListener();
 
@@ -47,7 +47,7 @@ describe('Node AMQP Bus Listener', function testBus() {
       expect(error).to.not.exist();
     });
 
-    it('should create relevant structs', function () {
+    it('should create relevant structs', () => {
       const listener = bus.createListener();
 
       listener.addHandler('my-queue-1', 'my-key-1', function myFunc1() {});
@@ -63,7 +63,7 @@ describe('Node AMQP Bus Listener', function testBus() {
     });
   });
 
-  describe('listen()', function () {
+  describe('listen()', () => {
     let sandbox;
 
     before(() => {
@@ -74,7 +74,7 @@ describe('Node AMQP Bus Listener', function testBus() {
       sandbox.restore();
     });
 
-    it('should listen to the exchange (first call)', function*() {
+    it('should listen to the exchange (first call)', function* test() {
       const client = {
         setupQueue: sandbox.stub().returns(Promise.resolve()),
         consume: sandbox.stub().returns(Promise.resolve()),
@@ -100,7 +100,7 @@ describe('Node AMQP Bus Listener', function testBus() {
       expect(client.consume.getCall(1).args[0], 'MY_QUEUE_NAME_2');
     });
 
-    it('should call the right handler', function*() {
+    it('should call the right handler', function* test() {
       const client = {
         setupQueue: sandbox.stub().returns(Promise.resolve()),
         consume: sandbox.stub().returns(Promise.resolve()),
@@ -150,7 +150,7 @@ describe('Node AMQP Bus Listener', function testBus() {
       expect(error).to.not.exist();
     });
 
-    it('should call the right handler (unknown handler)', function*() {
+    it('should call the right handler (unknown handler)', function* test() {
       const client = {
         setupQueue: sandbox.stub().returns(Promise.resolve()),
         consume: sandbox.stub().returns(Promise.resolve()),
@@ -187,7 +187,7 @@ describe('Node AMQP Bus Listener', function testBus() {
       expect(error).to.not.exist();
     });
 
-    it('should listen to the exchange (connection already exists)', function*() {
+    it('should listen to the exchange (connection already exists)', function* test() {
       const client = {
         setupQueue: sandbox.stub().returns(Promise.resolve()),
         consume: sandbox.stub().returns(Promise.resolve()),
@@ -206,7 +206,7 @@ describe('Node AMQP Bus Listener', function testBus() {
       expect(error).to.not.exist();
     });
 
-    it('should call client.setupQueue with all parameters', function*() {
+    it('should call client.setupQueue with all parameters', function* test() {
       const client = {
         setupQueue: sandbox.stub().returns(Promise.resolve()),
         consume: sandbox.stub().returns(Promise.resolve()),
@@ -251,6 +251,22 @@ describe('Node AMQP Bus Listener', function testBus() {
       const metadata = {};
       service.client.emit('consume_error', err, metadata);
       expect(errorStub.calledOnce).to.be.true();
+    });
+
+    it('should reconnect when the connection fails', function* test() {
+      const service = bus.createListener('amqp://localhost', { reconnectTimeout: 50 });
+      const errorSpy = sandbox.spy();
+      const reconnectSpy = sandbox.spy();
+
+      yield service.listen('EXCHANGE');
+      service.on('connection_error', errorSpy);
+      service.on('connected', reconnectSpy);
+
+      service.client.connection.emit('error', new Error('Something nasty happened'));
+
+      yield cb => setTimeout(cb, 200);
+      expect(errorSpy.callCount).to.equal(1);
+      expect(reconnectSpy.callCount).to.equal(1);
     });
   });
 });
