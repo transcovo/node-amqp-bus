@@ -46,6 +46,8 @@ You can use `listener` as an EventEmitter. It emits the following events =
   - `connect()` : emitted once, when the first call to listen() is made
   - `handle_error(err, { err, queue, message })` : emitted when a message cannot be consumed
     correctly by the client (not a JSON, handler failed)
+  - `connection_error(err, { err, queue })` : emitted when a message cannot be consumed
+    correctly by the client (not a JSON, handler failed)
 
 ## Client API
 

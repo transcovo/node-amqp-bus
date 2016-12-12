@@ -68,7 +68,7 @@ describe('Node AMQP Bus Client', function testBus() {
       yield channel.deleteQueue(queue);
       yield channel.deleteExchange(exchange);
       yield connection.close();
-      busClient = yield createBusClient(URL);
+      busClient = yield createBusClient(URL, { reconnectTimeout: 50 });
     });
     afterEach(function* afterEach() {
       busClient.close();
@@ -106,8 +106,8 @@ describe('Node AMQP Bus Client', function testBus() {
     });
 
     describe('#consume', () => {
-      let fakeHandler;
       const sandbox = sinon.sandbox.create();
+      let fakeHandler;
 
       beforeEach(() => { fakeHandler = sandbox.spy(); });
       afterEach(() => { sandbox.restore(); });
@@ -215,6 +215,31 @@ describe('Node AMQP Bus Client', function testBus() {
 
         yield busClient.close();
         yield waitForQueue(queue, qok => qok.messageCount === 0);
+      });
+    });
+
+    describe('#_reconnect', () => {
+      const sandbox = sinon.sandbox.create();
+
+      afterEach(() => {
+        sandbox.restore();
+      });
+
+      it('should handle connection errors and restart', function* test() {
+        const onErrorSpy = sandbox.spy();
+        const onConnectedSpy = sandbox.spy();
+        busClient.on('connection_error', onErrorSpy);
+        busClient.on('connected', onConnectedSpy);
+
+        busClient.connection.emit('error', new Error('Fire in the hole'));
+
+        onErrorSpy.callCount.should.equal(1);
+        onConnectedSpy.callCount.should.equal(0);
+
+        // wait for the reconnectTimeout
+        yield cb => setTimeout(cb, 100);
+
+        onConnectedSpy.callCount.should.equal(1);
       });
     });
   });
