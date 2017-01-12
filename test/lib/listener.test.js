@@ -6,9 +6,9 @@ const logger = require('chpr-logger');
 
 const bus = require('../../index.js');
 
-describe('Node AMQP Bus Listener', function testBus() {
-  describe('#createListener()', function () {
-    it('should create a listener', function () {
+describe('Node AMQP Bus Listener', () => {
+  describe('#createListener()', () => {
+    it('should create a listener', function test() {
       let listener;
       let error;
 
@@ -22,7 +22,7 @@ describe('Node AMQP Bus Listener', function testBus() {
       expect(listener).to.exist();
     });
 
-    it('should create a listener with all the properties', function () {
+    it('should create a listener with all the properties', function test() {
       const listener = bus.createListener();
 
       expect(listener).to.have.property('queues');
@@ -33,13 +33,16 @@ describe('Node AMQP Bus Listener', function testBus() {
     });
   });
 
-  describe('#addHandler()', function () {
-    it('should declare a handler', function () {
+  describe('#addHandler()', () => {
+    it('should declare a handler (function)', function test() {
       let error;
       const listener = bus.createListener();
+      const handler = function myFunc() {
+        return Promise.resolve();
+      };
 
       try {
-        listener.addHandler('my-queue', 'my-key', function myFunc() {});
+        listener.addHandler('my-queue', 'my-key', handler);
       } catch (e) {
         error = e;
       }
@@ -47,7 +50,24 @@ describe('Node AMQP Bus Listener', function testBus() {
       expect(error).to.not.exist();
     });
 
-    it('should create relevant structs', function () {
+    it('should declare a handler (generator function)', function test() {
+      let error;
+      const listener = bus.createListener();
+      const handler = function* myGenerator() {
+        yield Promise.resolve();
+        return Promise.resolve();
+      };
+
+      try {
+        listener.addHandler('my-queue', 'my-key', handler);
+      } catch (e) {
+        error = e;
+      }
+
+      expect(error).to.not.exist();
+    });
+
+    it('should create relevant structs', function test() {
       const listener = bus.createListener();
 
       listener.addHandler('my-queue-1', 'my-key-1', function myFunc1() {});
@@ -63,7 +83,7 @@ describe('Node AMQP Bus Listener', function testBus() {
     });
   });
 
-  describe('listen()', function () {
+  describe('listen()', () => {
     let sandbox;
 
     before(() => {
@@ -74,7 +94,7 @@ describe('Node AMQP Bus Listener', function testBus() {
       sandbox.restore();
     });
 
-    it('should listen to the exchange (first call)', function*() {
+    it('should listen to the exchange (first call)', function* test() {
       const client = {
         setupQueue: sandbox.stub().returns(Promise.resolve()),
         consume: sandbox.stub().returns(Promise.resolve()),
@@ -100,7 +120,7 @@ describe('Node AMQP Bus Listener', function testBus() {
       expect(client.consume.getCall(1).args[0], 'MY_QUEUE_NAME_2');
     });
 
-    it('should call the right handler', function*() {
+    it('should call the right handler (generator function)', function* test() {
       const client = {
         setupQueue: sandbox.stub().returns(Promise.resolve()),
         consume: sandbox.stub().returns(Promise.resolve()),
@@ -150,7 +170,63 @@ describe('Node AMQP Bus Listener', function testBus() {
       expect(error).to.not.exist();
     });
 
-    it('should call the right handler (unknown handler)', function*() {
+    it('should call the right handler (promise)', function* test() {
+      const client = {
+        setupQueue: sandbox.stub().returns(Promise.resolve()),
+        consume: sandbox.stub().returns(Promise.resolve()),
+        on: sandbox.stub()
+      };
+      const service = bus.createListener('url', { client });
+
+      const queue1 = 'MY_QUEUE_NAME_1';
+      const key1 = 'SOME_EVENT_1';
+      const handler1 = function someHandler() {
+        return Promise.resolve();
+      };
+      const key2 = 'SOME_EVENT_2';
+      const handler2 = function anotherHandler() {
+        return Promise.resolve();
+      };
+      const queue2 = 'MY_QUEUE_NAME_2';
+      const handler3 = function anotherAnotherHandler() {
+        return Promise.resolve();
+      };
+
+      service.addHandler(queue1, key1, handler1);
+      service.addHandler(queue1, key2, handler2);
+      service.addHandler(queue2, key1, handler3);
+
+      sandbox.stub(logger, 'info');
+
+      yield service.listen('EXCHANGE');
+
+      let error;
+      let response;
+      try {
+        response = client.consume.getCall(0).args[1]({}, { routingKey: 'SOME_EVENT_1' });
+      } catch (e) {
+        error = e;
+      }
+      try {
+        yield response;
+      } catch (e) {
+        error = e;
+      }
+      try {
+        response = client.consume.getCall(1).args[1]({}, { routingKey: 'SOME_EVENT_2' });
+      } catch (e) {
+        error = e;
+      }
+      try {
+        yield response;
+      } catch (e) {
+        error = e;
+      }
+      expect(response).to.be.a('promise');
+      expect(error).to.not.exist();
+    });
+
+    it('should call the right handler (unknown handler)', function* test() {
       const client = {
         setupQueue: sandbox.stub().returns(Promise.resolve()),
         consume: sandbox.stub().returns(Promise.resolve()),
@@ -187,7 +263,7 @@ describe('Node AMQP Bus Listener', function testBus() {
       expect(error).to.not.exist();
     });
 
-    it('should listen to the exchange (connection already exists)', function*() {
+    it('should listen to the exchange (connection already exists)', function* test() {
       const client = {
         setupQueue: sandbox.stub().returns(Promise.resolve()),
         consume: sandbox.stub().returns(Promise.resolve()),
@@ -206,7 +282,7 @@ describe('Node AMQP Bus Listener', function testBus() {
       expect(error).to.not.exist();
     });
 
-    it('should call client.setupQueue with all parameters', function*() {
+    it('should call client.setupQueue with all parameters', function* test() {
       const client = {
         setupQueue: sandbox.stub().returns(Promise.resolve()),
         consume: sandbox.stub().returns(Promise.resolve()),
