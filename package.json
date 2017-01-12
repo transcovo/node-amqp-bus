@@ -1,6 +1,6 @@
 {
   "name": "@chauffeur-prive/node-amqp-bus",
-  "version": "4.0.1",
+  "version": "4.1.0",
   "description": "Implement a Bus using AMQP in nodejs",
   "repository": {
     "type": "git",
