@@ -39,6 +39,8 @@ Add a new handler to the listener. If you add two handlers with the same queue a
 
 `options` will be passed to `client.createQueue`.
 
+**ATTENTION:** If your handler is a generator, then you must wrap it. If not, we assume it's either an async function or a function that returns a `Promise`.
+
 ### EventEmitter interface
 
 You can use `listener` as an EventEmitter. It emits the following events =
