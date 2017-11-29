@@ -7,31 +7,31 @@ Implements a simple bus client to exchange JSON message on queues using AMQP ser
 
 ## Install
 
-    npm install node-amqp-bus --save
+    npm install @chauffeur-prive/node-amqp-bus --save
 
 ## Use
 
-    const bus = require('node-amqp-bus');
+    const bus = require('@chauffeur-prive/node-amqp-bus');
 
 ## Listener API
 
-### bus.createBusListener(url, [options])
+### bus.createListener(url, [options])
 
 Creates a listener, returns a `Listener` instance. the `options` parameter can contain a `client`
 that is a node-amqp-bus client.
 
 ```
-const listener = bus.createBusListener(url);
+const listener = bus.createListener(url);
 ```
 
 or
 
 ```
-const client = yield bus.createBusClient(url);
-const listener = yield bus.createBusListener(url, { client });
+const client = yield bus.createClient(url);
+const listener = yield bus.createListener(url, { client });
 ```
 
-Note: in this case, `url` is ignored in the createBusListener call.
+Note: in this case, `url` is ignored in the createListener call.
 
 ### listener.addHandler(queue, key, handler, options)
 
@@ -51,11 +51,11 @@ You can use `listener` as an EventEmitter. It emits the following events =
 
 ## Client API
 
-### bus.createBusClient(url)
+### bus.createClient(url)
 
 Creates a client. Returns a `Promise` of the client.
 
-    const client = yield bus.createBusClient(url);
+    const client = yield bus.createClient(url);
 
 ### client.close()
 
