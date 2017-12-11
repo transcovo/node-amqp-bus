@@ -109,8 +109,12 @@ describe('Node AMQP Bus Client', function testBus() {
       let fakeHandler;
       const sandbox = sinon.sandbox.create();
 
-      beforeEach(() => { fakeHandler = sandbox.spy(); });
-      afterEach(() => { sandbox.restore(); });
+      beforeEach(() => {
+        fakeHandler = sandbox.spy();
+      });
+      afterEach(() => {
+        sandbox.restore();
+      });
 
       it('should consume previous events with the handler and acknowledge message', function* it() {
         yield busClient.setupQueue(exchange, queue, rootingKey);
@@ -195,6 +199,62 @@ describe('Node AMQP Bus Client', function testBus() {
 
         ackStub.calledOnce.should.be.true();
         fakeHandler.called.should.be.false();
+      });
+
+      describe('graceful shutdown', () => {
+        beforeEach(() => {
+          // without this, mocha will stop at the end of the test
+          process.removeAllListeners('SIGTERM');
+          process.removeAllListeners('SIGINT');
+        });
+
+        it('should stop consuming messages when receiving SIGINT', function* it() {
+          yield busClient.setupQueue(exchange, queue, rootingKey);
+          const cancelSpy = sandbox.spy(busClient.channel, 'cancel');
+
+          function* handler(content, fields, callback) {
+            fakeHandler(content);
+            callback(new Error());
+          }
+
+          yield busClient.consume(queue, handler);
+
+          process.kill(process.pid, 'SIGINT');
+
+          yield cb => setTimeout(cb, 50);
+
+          cancelSpy.calledOnce.should.be.true();
+
+          busClient.channel.publish(exchange, rootingKey, new Buffer('coucou'));
+          yield cb => setTimeout(cb, 50);
+          yield waitForQueue(queue, qok => qok.messageCount === 1);
+
+          fakeHandler.called.should.be.false();
+        });
+
+        it('should stop consuming messages when receiving SIGTERM', function* it() {
+          yield busClient.setupQueue(exchange, queue, rootingKey);
+          const cancelSpy = sandbox.spy(busClient.channel, 'cancel');
+
+          function* handler(content, fields, callback) {
+            fakeHandler(content);
+            callback(new Error());
+          }
+
+          yield busClient.consume(queue, handler);
+
+          process.kill(process.pid, 'SIGTERM');
+
+          yield cb => setTimeout(cb, 50);
+
+          cancelSpy.calledOnce.should.be.true();
+
+          busClient.channel.publish(exchange, rootingKey, new Buffer('coucou'));
+          yield cb => setTimeout(cb, 50);
+          yield waitForQueue(queue, qok => qok.messageCount === 1);
+
+          fakeHandler.called.should.be.false();
+        });
       });
     });
 
