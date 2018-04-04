@@ -3,6 +3,7 @@
 require('co-mocha')(require('mocha'));
 require('should');
 const amqplib = require('amqplib');
+const { expect } = require('chai');
 
 const createBusClient = require('../../lib/client');
 const URL = 'amqp://guest:guest@localhost:5672';
@@ -44,6 +45,13 @@ describe('Node AMQP Bus Client', function testBus() {
       const busClient = yield createBusClient(URL);
       (typeof(busClient.channel.publish)).should.equal('function');
       (typeof(busClient.connection.close)).should.equal('function');
+    });
+
+    it('should create a client using a confirm channel', function* it() {
+      const busClient = yield createBusClient(URL, { useConfirmChannel: true });
+
+      expect(busClient.channel).to.respondTo('publish');
+      expect(busClient.channel).to.respondTo('waitForConfirms');
     });
   });
 
