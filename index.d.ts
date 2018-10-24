@@ -14,11 +14,15 @@ declare class Bus {
   static createClient(url: string, options?: Bus.BusOptions): BusClient;
 }
 
-export class BusClient extends EventEmitter {
-  channel: Channel;
-  connection: Connection;
+export interface BusClient extends EventEmitter {
+  publish(
+    exchange: string,
+    routingKey: string,
+    message: Object,
+    options?: Bus.PublishOptions,
+  ): Boolean;
 
-  publish(exchange: string, routingKey: string, message: Object, options?: Bus.PublishOptions): Boolean;
+  close(): Promise<void>;
 }
 
 declare namespace Bus {
