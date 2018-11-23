@@ -61,6 +61,13 @@ describe('Node AMQP Bus Client', function testBus() {
       yield busClient.close();
       (busClient.connection === null).should.equal(true);
     });
+
+    it('should be idempotent', function* it() {
+      const busClient = yield createBusClient(URL);
+      yield busClient.close();
+      yield busClient.close();
+      (busClient.connection === null).should.equal(true);
+    });
   });
 
   describe('once the bus client is initialized', () => {
