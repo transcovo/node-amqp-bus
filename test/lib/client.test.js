@@ -41,10 +41,23 @@ function* waitForQueue(queue, condition) {
 
 describe('Node AMQP Bus Client', function testBus() {
   describe('#createBusClient', () => {
+    let sandbox;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
     it('should return an object with connection and channel', function* testCreateBusClient() {
       const busClient = yield createBusClient(URL);
       (typeof(busClient.channel.publish)).should.equal('function');
       (typeof(busClient.connection.close)).should.equal('function');
+
+      expect(busClient.connection.listenerCount('close')).to.equal(1);
+      expect(busClient.connection.listeners('close')[0].name).to.deep.equal('handleExitOnConnectionClose');
     });
 
     it('should create a client using a confirm channel', function* it() {
@@ -53,13 +66,60 @@ describe('Node AMQP Bus Client', function testBus() {
       expect(busClient.channel).to.respondTo('publish');
       expect(busClient.channel).to.respondTo('waitForConfirms');
     });
+
+    it('Should exit gracefully when the connection close event is sent', function *it() {
+      const processExitStub = sandbox.stub(process, 'exit');
+      processExitStub
+        .withArgs(1)
+        .onFirstCall()
+        .returns(1);
+
+      const busClient = yield createBusClient(URL);
+      const busClientCloseSpy = sandbox.spy(busClient, 'close');
+
+      busClient.connection.emit('close');
+      yield cb => setTimeout(cb, 20);
+
+      expect(busClientCloseSpy.calledOnce).to.equal(true);
+      expect(processExitStub.calledOnce).to.equal(true);
+    });
   });
 
   describe('#close', () => {
-    it('should close the connection', function* it() {
+    let sandbox;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it('should close the connection (& exit process)', function* it() {
+      const processExitStub = sandbox.stub(process, 'exit');
+      processExitStub
+        .withArgs(1)
+        .onFirstCall()
+        .returns(1);
+
+      const busClient = yield createBusClient(URL);
+      yield busClient.close(true);
+      (busClient.connection === null).should.equal(true);
+      expect(processExitStub.calledOnce).to.equal(true);
+    });
+
+    it('should close the connection (without exiting process)', function* it() {
+      const processExitStub = sandbox.stub(process, 'exit');
+      processExitStub
+        .withArgs(1)
+        .onFirstCall()
+        .returns(1);
+
       const busClient = yield createBusClient(URL);
       yield busClient.close();
       (busClient.connection === null).should.equal(true);
+      expect(processExitStub.notCalled).to.equal(true);
     });
 
     it('should be idempotent', function* it() {
@@ -122,7 +182,7 @@ describe('Node AMQP Bus Client', function testBus() {
 
     describe('#consume', () => {
       let fakeHandler;
-      const sandbox = sinon.sandbox.create();
+      const sandbox = sinon.createSandbox();
 
       beforeEach(() => { fakeHandler = sandbox.spy(); });
       afterEach(() => { sandbox.restore(); });
