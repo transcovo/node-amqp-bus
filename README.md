@@ -57,9 +57,11 @@ Creates a client. Returns a `Promise` of the client.
 
     const client = yield bus.createClient(url);
 
-### client.close()
+### client.close(forceClose = false)
 
 Closes the client. Returns a `Promise`.
+When passing a truthy `forceClose`, `close()` will also `exit(1)` the current process,
+so when handling erronous case that you can't recover from, one should call `close(true)`.
 
     client.close();
 

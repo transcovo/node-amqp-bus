@@ -87,7 +87,7 @@ describe('Node AMQP Bus Listener', () => {
     let sandbox;
 
     before(() => {
-      sandbox = sinon.sandbox.create();
+      sandbox = sinon.createSandbox();
     });
 
     afterEach(() => {
