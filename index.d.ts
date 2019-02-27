@@ -29,6 +29,8 @@ declare namespace Bus {
   export interface BusOptions {
     heartbeat?: number;
     useConfirmChannel?: Boolean;
+    processExitCleanupTimeout?: number;
+    processExitTimeout?: number;
   }
 
   export interface PublishOptions {

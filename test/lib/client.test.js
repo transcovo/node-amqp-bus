@@ -74,12 +74,85 @@ describe('Node AMQP Bus Client', function testBus() {
         .onFirstCall()
         .returns(1);
 
-      const busClient = yield createBusClient(URL);
+      const busClient = yield createBusClient(URL, { processExitCleanupTimeout: 1 });
       const busClientCloseSpy = sandbox.spy(busClient, 'close');
 
       busClient.connection.emit('close');
       yield cb => setTimeout(cb, 20);
 
+      expect(busClientCloseSpy.calledOnce).to.equal(true);
+      expect(processExitStub.calledOnce).to.equal(true);
+    });
+
+    it('Should emit a close_cleanup event, then exit gracefully when the connection close event is sent', function* it() {
+      const processExitStub = sandbox.stub(process, 'exit');
+      processExitStub
+        .withArgs(1)
+        .onFirstCall()
+        .returns(1);
+
+      const busClient = yield createBusClient(URL, { processExitCleanupTimeout: 1 });
+      const busClientCloseSpy = sandbox.spy(busClient, 'close');
+      let closeCleanupEventEmitted = false;
+
+      busClient.on('close_cleanup', () => {
+        closeCleanupEventEmitted = true;
+      });
+
+      busClient.connection.emit('close');
+      yield cb => setTimeout(cb, 20);
+
+      expect(closeCleanupEventEmitted).to.equal(true);
+      expect(busClientCloseSpy.calledOnce).to.equal(true);
+      expect(processExitStub.calledOnce).to.equal(true);
+    });
+
+    it('Should complete the cleanup operation, then exit gracefully when the connection close event is sent', function* it() {
+      const processExitStub = sandbox.stub(process, 'exit');
+      processExitStub
+        .withArgs(1)
+        .onFirstCall()
+        .returns(1);
+
+      const busClient = yield createBusClient(URL, { processExitCleanupTimeout: 10 });
+      const busClientCloseSpy = sandbox.spy(busClient, 'close');
+      let closeCleanupEventDone = false;
+
+      busClient.on('close_cleanup', () => {
+        setTimeout(() => {
+          closeCleanupEventDone = true;
+        }, 5);
+      });
+
+      busClient.connection.emit('close');
+      yield cb => setTimeout(cb, 30);
+
+      expect(closeCleanupEventDone).to.equal(true);
+      expect(busClientCloseSpy.calledOnce).to.equal(true);
+      expect(processExitStub.calledOnce).to.equal(true);
+    });
+
+    it('Should interrupt the cleanup operation when it exceeds the defined timeout, by exiting gracefully when the connection close event is sent', function* it() {
+      const processExitStub = sandbox.stub(process, 'exit');
+      processExitStub
+        .withArgs(1)
+        .onFirstCall()
+        .returns(1);
+
+      const busClient = yield createBusClient(URL, { processExitCleanupTimeout: 1 });
+      const busClientCloseSpy = sandbox.spy(busClient, 'close');
+      let forceCloseCleanupEventDone = false;
+
+      busClient.on('close_cleanup', () => {
+        setTimeout(() => {
+          forceCloseCleanupEventDone = true;
+        }, 20);
+      });
+
+      busClient.connection.emit('close');
+      yield cb => setTimeout(cb, 10);
+
+      expect(forceCloseCleanupEventDone).to.equal(false);
       expect(busClientCloseSpy.calledOnce).to.equal(true);
       expect(processExitStub.calledOnce).to.equal(true);
     });
