@@ -51,6 +51,14 @@ You can use `listener` as an EventEmitter. It emits the following events =
 
 ## Client API
 
+### EventEmitter interface
+
+The client is an EventEmitter`. It emits the following events:
+
+* `close_cleanup`: emitted once, when handling a `close` connection event.  
+   It provides a timeout (defaut = `200ms`) before executing a `client.close(forceClose = true)`,  
+   for the host app to execute any cleanup operations (such as closing a `mongodb` client).
+
 ### bus.createClient(url)
 
 Creates a client. Returns a `Promise` of the client.
@@ -61,7 +69,7 @@ Creates a client. Returns a `Promise` of the client.
 
 Closes the client. Returns a `Promise`.
 When passing a truthy `forceClose`, `close()` will also `exit(1)` the current process,
-so when handling erronous case that you can't recover from, one should call `close(true)`.
+so when handling erroneous case that you can't recover from, one should call `close(true)`.
 
     client.close();
 
