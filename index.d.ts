@@ -22,7 +22,8 @@ export interface BusClient extends EventEmitter {
     options?: Bus.PublishOptions,
   ): Boolean;
 
-  close(): Promise<void>;
+  // forceClose defaults to false
+  close(forceClose?: Boolean): Promise<void>;
 }
 
 declare namespace Bus {
