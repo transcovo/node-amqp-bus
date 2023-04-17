@@ -26,7 +26,7 @@
     "eslint": "^1.10.3",
     "eslint-config-cp": "github:transcovo/eslint-config-cp#1.0.3",
     "istanbul": "^0.4.2",
-    "mocha": "^2.4.5",
+    "mocha": "^10.2.0",
     "should": "^8.2.1",
     "sinon": "3.3.0"
   },
